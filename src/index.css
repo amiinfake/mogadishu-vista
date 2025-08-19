@@ -1,122 +1,55 @@
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Mogadishu Maps Design System - Modern map application with ocean-inspired palette */
-
 @layer base {
   :root {
-    --background: 210 11% 96%;
-    --foreground: 215 25% 15%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 215 25% 15%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
-
-    /* Ocean-inspired primary palette */
-    --primary: 213 85% 45%;
-    --primary-foreground: 0 0% 98%;
-    --primary-light: 213 85% 55%;
-    --primary-dark: 213 85% 35%;
-
-    /* Glass-morphism secondary */
-    --secondary: 213 15% 92%;
-    --secondary-foreground: 215 25% 25%;
-
-    --muted: 213 10% 88%;
-    --muted-foreground: 215 15% 45%;
-
-    /* Accent for interactive elements */
-    --accent: 200 95% 50%;
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
     --accent-foreground: 0 0% 98%;
-
-    --destructive: 0 84% 60%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-
-    --border: 213 15% 85%;
-    --input: 213 15% 88%;
-    --ring: 213 85% 45%;
-
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    --radius: 0.75rem;
+    
     /* Map-specific design tokens */
-    --map-overlay: 213 25% 15% / 0.8;
-    --map-control: 0 0% 100% / 0.95;
-    --map-control-hover: 213 85% 45% / 0.1;
-    --map-shadow: 213 25% 15% / 0.15;
+    --primary-light: 200 100% 80%;
+    --primary-dark: 200 100% 30%;
     
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(213 85% 45%), hsl(200 95% 50%));
-    --gradient-glass: linear-gradient(145deg, hsl(0 0% 100% / 0.9), hsl(0 0% 100% / 0.6));
-    --gradient-overlay: linear-gradient(180deg, transparent, hsl(213 25% 15% / 0.3));
+    /* Enhanced gradients for interactive elements */
+    --gradient-primary: linear-gradient(135deg, hsl(200 100% 60%), hsl(220 100% 70%));
+    --gradient-glass: linear-gradient(145deg, hsl(240 10% 3.9% / 0.95), hsl(240 10% 3.9% / 0.8));
+    --gradient-overlay: linear-gradient(180deg, transparent, hsl(240 10% 3.9% / 0.6));
     
-    /* Shadows */
-    --shadow-soft: 0 4px 20px hsl(var(--map-shadow));
-    --shadow-medium: 0 8px 30px hsl(var(--map-shadow));
-    --shadow-strong: 0 12px 40px hsl(var(--map-shadow));
+    /* Enhanced shadows for depth */
+    --shadow-soft: 0 2px 8px -2px hsl(240 10% 3.9% / 0.2);
+    --shadow-medium: 0 8px 25px -5px hsl(240 10% 3.9% / 0.3);
+    --shadow-strong: 0 25px 50px -12px hsl(240 10% 3.9% / 0.5);
     
-    /* Animations */
-    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    --transition-spring: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-
-    --radius: 0.5rem;
-
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 215 30% 8%;
-    --foreground: 210 15% 92%;
-
-    --card: 215 25% 12%;
-    --card-foreground: 210 15% 92%;
-
-    --popover: 215 25% 12%;
-    --popover-foreground: 210 15% 92%;
-
-    --primary: 213 85% 55%;
-    --primary-foreground: 215 30% 8%;
-    --primary-light: 213 85% 65%;
-    --primary-dark: 213 85% 45%;
-
-    --secondary: 215 20% 18%;
-    --secondary-foreground: 210 15% 85%;
-
-    --muted: 215 15% 20%;
-    --muted-foreground: 215 10% 65%;
-
-    --accent: 200 95% 55%;
-    --accent-foreground: 215 30% 8%;
-
-    --destructive: 0 75% 55%;
-    --destructive-foreground: 210 15% 92%;
-
-    --border: 215 15% 22%;
-    --input: 215 15% 22%;
-    --ring: 213 85% 55%;
-
-    /* Dark mode map tokens */
-    --map-overlay: 210 15% 92% / 0.8;
-    --map-control: 215 25% 12% / 0.95;
-    --map-control-hover: 213 85% 55% / 0.1;
-    --map-shadow: 215 30% 5% / 0.4;
+    /* Smooth transitions */
+    --transition-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
     
-    --gradient-glass: linear-gradient(145deg, hsl(215 25% 12% / 0.9), hsl(215 25% 12% / 0.6));
-    --gradient-overlay: linear-gradient(180deg, transparent, hsl(215 30% 5% / 0.4));
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -126,14 +59,120 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
+  .light {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 45%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5.9% 10%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+
+    /* Light mode map tokens */
+    --gradient-glass: linear-gradient(145deg, hsl(0 0% 100% / 0.95), hsl(0 0% 100% / 0.8));
+    --gradient-overlay: linear-gradient(180deg, transparent, hsl(240 10% 3.9% / 0.1));
+    --shadow-soft: 0 2px 8px -2px hsl(240 5.9% 10% / 0.1);
+    --shadow-medium: 0 8px 25px -5px hsl(240 5.9% 10% / 0.15);
+    --shadow-strong: 0 25px 50px -12px hsl(240 5.9% 10% / 0.25);
+    
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
 }
 
 @layer base {
   * {
     @apply border-border;
   }
-
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* Custom Mapbox popup styling */
+.mapboxgl-popup {
+  max-width: 300px;
+}
+
+.mapboxgl-popup-content {
+  @apply bg-card text-card-foreground border-border/50 rounded-lg shadow-medium backdrop-blur-md;
+  padding: 0 !important;
+}
+
+.mapboxgl-popup-close-button {
+  @apply text-muted-foreground hover:text-foreground;
+  right: 8px !important;
+  top: 8px !important;
+  font-size: 18px !important;
+}
+
+.mapboxgl-popup-tip {
+  @apply border-t-card;
+}
+
+/* Enhanced street view marker animations */
+.street-view-marker {
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.street-view-marker:hover {
+  transform: scale(1.1) translateY(-2px);
+  filter: drop-shadow(0 8px 16px rgba(14, 165, 233, 0.4));
+}
+
+/* Street view popup custom styling */
+.street-view-popup .mapboxgl-popup-content {
+  @apply bg-gradient-glass border border-border/30;
+  backdrop-filter: blur(16px);
+}
+
+/* Navigation controls styling */
+.mapboxgl-ctrl-group {
+  @apply bg-gradient-glass backdrop-blur-xl border border-border/30 rounded-lg;
+  box-shadow: var(--shadow-medium);
+}
+
+.mapboxgl-ctrl button {
+  @apply text-foreground hover:bg-accent;
+  background: transparent !important;
+}
+
+/* Scale control styling */
+.mapboxgl-ctrl-scale {
+  @apply bg-gradient-glass backdrop-blur-xl text-foreground border border-border/30 rounded px-2 py-1;
+  font-size: 11px;
+}
+
+/* Geolocate control styling */
+.mapboxgl-ctrl-geolocate {
+  @apply text-foreground;
+}
+
+.mapboxgl-ctrl-geolocate.mapboxgl-ctrl-geolocate-active {
+  @apply bg-primary text-primary-foreground;
 }
