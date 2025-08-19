@@ -3,11 +3,26 @@ import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { MapButton } from './ui/map-button';
-import { Search, MapPin, Camera, Upload, Menu, Navigation, Layers, Compass } from 'lucide-react';
+import { Search, MapPin, Camera, Upload, Menu, Navigation, Layers, Compass, LogOut } from 'lucide-react';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+
+interface Location {
+  id: string;
+  title: string;
+  description: string | null;
+  longitude: number;
+  latitude: number;
+  has_street_view: boolean;
+  street_view_image_url: string | null;
+  location_type: string;
+  is_public: boolean;
+}
 
 const Map = () => {
+  const { user, signOut } = useAuth();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [isStreetView, setIsStreetView] = useState(false);
@@ -15,21 +30,36 @@ const Map = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentLocation, setCurrentLocation] = useState<{lng: number, lat: number} | null>(null);
   const [streetViewMarkers, setStreetViewMarkers] = useState<mapboxgl.Marker[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
 
   // Your Mapbox token
   const MAPBOX_TOKEN = "pk.eyJ1IjoiYW1paW5yIiwiYSI6ImNtMzZndWt3NTA0cGsybXMyaW4zajlnOGcifQ.7kA7CsbYlM3h3Mi36UX5Ew";
 
-  // Enhanced street view locations with more detail
-  const streetViewLocations = [
-    { lng: 45.3254, lat: 2.0469, title: "Bakaara Market", description: "Main commercial district", hasStreetView: true },
-    { lng: 45.3431, lat: 2.0469, title: "Aden Adde International Airport", description: "Main airport terminal", hasStreetView: true },
-    { lng: 45.3311, lat: 2.0394, title: "Villa Somalia", description: "Presidential palace", hasStreetView: true },
-    { lng: 45.3200, lat: 2.0500, title: "Liido Beach", description: "Popular beach area", hasStreetView: true },
-    { lng: 45.3180, lat: 2.0450, title: "Mogadishu Port", description: "Main seaport", hasStreetView: true },
-    { lng: 45.3350, lat: 2.0380, title: "Banadir Hospital", description: "Main hospital", hasStreetView: true },
-    { lng: 45.3280, lat: 2.0420, title: "Central Mosque", description: "Historic mosque", hasStreetView: true },
-    { lng: 45.3150, lat: 2.0480, title: "Fish Market", description: "Local fish market", hasStreetView: true }
-  ];
+  // Fetch locations from Supabase
+  const fetchLocations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('locations')
+        .select('*')
+        .eq('is_public', true);
+
+      if (error) {
+        console.error('Error fetching locations:', error);
+        toast.error('Failed to load map locations');
+        return;
+      }
+
+      setLocations(data || []);
+    } catch (error) {
+      console.error('Error fetching locations:', error);
+      toast.error('Failed to load map locations');
+    }
+  };
+
+  // Load locations on component mount
+  useEffect(() => {
+    fetchLocations();
+  }, []);
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -151,9 +181,21 @@ const Map = () => {
       });
     });
 
+    return () => {
+      map.current?.remove();
+    };
+  }, []);
+
+  // Add markers when locations change
+  useEffect(() => {
+    if (!map.current || locations.length === 0) return;
+
+    // Clear existing markers
+    streetViewMarkers.forEach(marker => marker.remove());
+
     // Add street view markers with enhanced interaction
     const markers: mapboxgl.Marker[] = [];
-    streetViewLocations.forEach((location, index) => {
+    locations.forEach((location, index) => {
       const el = document.createElement('div');
       el.className = 'street-view-marker';
       el.innerHTML = `
@@ -185,7 +227,7 @@ const Map = () => {
       });
 
       const marker = new mapboxgl.Marker(el)
-        .setLngLat([location.lng, location.lat])
+        .setLngLat([location.longitude, location.latitude])
         .setPopup(
           new mapboxgl.Popup({ 
             offset: 25,
@@ -195,10 +237,12 @@ const Map = () => {
             .setHTML(`
               <div class="p-3">
                 <h3 class="font-semibold text-foreground mb-1">${location.title}</h3>
-                <p class="text-sm text-muted-foreground mb-2">${location.description}</p>
+                <p class="text-sm text-muted-foreground mb-2">${location.description || ''}</p>
                 <div class="flex items-center gap-2">
-                  <div class="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span class="text-xs text-green-600">360° Street View Available</span>
+                  <div class="w-2 h-2 ${location.has_street_view ? 'bg-green-500' : 'bg-yellow-500'} rounded-full"></div>
+                  <span class="text-xs ${location.has_street_view ? 'text-green-600' : 'text-yellow-600'}">
+                    ${location.has_street_view ? '360° Street View Available' : 'Location Marked'}
+                  </span>
                 </div>
               </div>
             `)
@@ -209,14 +253,7 @@ const Map = () => {
     });
 
     setStreetViewMarkers(markers);
-
-    toast.success("Interactive Mogadishu map loaded successfully!");
-
-    return () => {
-      markers.forEach(marker => marker.remove());
-      map.current?.remove();
-    };
-  }, []);
+  }, [locations]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,14 +261,14 @@ const Map = () => {
     
     // Enhanced search functionality
     const searchTerm = searchQuery.toLowerCase();
-    const foundLocation = streetViewLocations.find(location => 
+    const foundLocation = locations.find(location => 
       location.title.toLowerCase().includes(searchTerm) ||
-      location.description.toLowerCase().includes(searchTerm)
+      (location.description && location.description.toLowerCase().includes(searchTerm))
     );
 
     if (foundLocation && map.current) {
       map.current.flyTo({
-        center: [foundLocation.lng, foundLocation.lat],
+        center: [foundLocation.longitude, foundLocation.latitude],
         zoom: 17,
         pitch: 60,
         duration: 2000
@@ -319,10 +356,17 @@ const Map = () => {
             </div>
           </form>
           
-          {/* Menu Button */}
-          <MapButton variant="floating" size="floating">
-            <Menu className="w-5 h-5" />
-          </MapButton>
+          {/* User Info & Menu */}
+          <div className="flex items-center gap-2">
+            {user && (
+              <div className="bg-gradient-glass backdrop-blur-xl rounded-xl px-3 py-2 border border-border/30 text-sm text-foreground">
+                {user.email}
+              </div>
+            )}
+            <MapButton variant="floating" size="floating" onClick={signOut}>
+              <LogOut className="w-5 h-5" />
+            </MapButton>
+          </div>
         </div>
       </div>
 
@@ -368,11 +412,11 @@ const Map = () => {
               <h3 className="font-medium text-foreground">
                 {isStreetView ? "Street View Mode Active" : "Explore Mogadishu"}
               </h3>
-              <p className="text-sm text-muted-foreground">
-                {isStreetView 
-                  ? "Navigate blue routes and click markers for 360° street views" 
-                  : `${streetViewLocations.length} locations with street view available`
-                }
+               <p className="text-sm text-muted-foreground">
+                 {isStreetView 
+                   ? "Navigate blue routes and click markers for 360° street views" 
+                   : `${locations.length} locations available`
+                 }
               </p>
             </div>
             <MapButton variant="outline" size="sm">
