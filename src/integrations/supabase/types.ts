@@ -14,7 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      locations: {
+        Row: {
+          created_at: string
+          description: string | null
+          has_street_view: boolean | null
+          id: string
+          is_public: boolean | null
+          latitude: number
+          location_type: string | null
+          longitude: number
+          street_view_image_url: string | null
+          title: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          has_street_view?: boolean | null
+          id?: string
+          is_public?: boolean | null
+          latitude: number
+          location_type?: string | null
+          longitude: number
+          street_view_image_url?: string | null
+          title: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          has_street_view?: boolean | null
+          id?: string
+          is_public?: boolean | null
+          latitude?: number
+          location_type?: string | null
+          longitude?: number
+          street_view_image_url?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
