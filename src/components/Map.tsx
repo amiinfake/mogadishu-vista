@@ -3,11 +3,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { MapButton } from './ui/map-button';
-import { Search, MapPin, Camera, Upload, Menu, Navigation, Layers, Compass, LogOut } from 'lucide-react';
+import { Search, MapPin, Camera, Upload, Menu, Navigation, Layers, Compass, LogOut, Plus } from 'lucide-react';
 import { Input } from './ui/input';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import TourUpload from './TourUpload';
 
 interface Location {
   id: string;
@@ -27,6 +28,7 @@ const Map = () => {
   const map = useRef<mapboxgl.Map | null>(null);
   const [isStreetView, setIsStreetView] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [showTourUpload, setShowTourUpload] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentLocation, setCurrentLocation] = useState<{lng: number, lat: number} | null>(null);
   const [streetViewMarkers, setStreetViewMarkers] = useState<mapboxgl.Marker[]>([]);
@@ -37,11 +39,13 @@ const Map = () => {
 
   // Fetch locations from Supabase
   const fetchLocations = async () => {
+    if (!user) return;
+    
     try {
       const { data, error } = await supabase
         .from('locations')
         .select('*')
-        .eq('is_public', true);
+        .or(`is_public.eq.true,user_id.eq.${user.id}`);
 
       if (error) {
         console.error('Error fetching locations:', error);
@@ -56,10 +60,10 @@ const Map = () => {
     }
   };
 
-  // Load locations on component mount
+  // Load locations when user changes
   useEffect(() => {
     fetchLocations();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -199,23 +203,23 @@ const Map = () => {
       const el = document.createElement('div');
       el.className = 'street-view-marker';
       el.innerHTML = `
-        <div style="
-          width: 40px;
-          height: 40px;
-          background: linear-gradient(145deg, #0ea5e9, #0284c7);
-          border: 3px solid white;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
-          transition: transform 0.2s ease;
-        ">
-          <svg width="20" height="20" fill="white" viewBox="0 0 24 24">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-          </svg>
-        </div>
+          <div style="
+            width: 40px;
+            height: 40px;
+            background: ${location.user_id === user?.id ? 'linear-gradient(145deg, #10b981, #059669)' : 'linear-gradient(145deg, #0ea5e9, #0284c7)'};
+            border: 3px solid white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(${location.user_id === user?.id ? '16, 185, 129' : '14, 165, 233'}, 0.4);
+            transition: transform 0.2s ease;
+          ">
+            <svg width="20" height="20" fill="white" viewBox="0 0 24 24">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+          </div>
       `;
 
       el.addEventListener('mouseenter', () => {
@@ -238,11 +242,14 @@ const Map = () => {
               <div class="p-3">
                 <h3 class="font-semibold text-foreground mb-1">${location.title}</h3>
                 <p class="text-sm text-muted-foreground mb-2">${location.description || ''}</p>
-                <div class="flex items-center gap-2">
-                  <div class="w-2 h-2 ${location.has_street_view ? 'bg-green-500' : 'bg-yellow-500'} rounded-full"></div>
-                  <span class="text-xs ${location.has_street_view ? 'text-green-600' : 'text-yellow-600'}">
-                    ${location.has_street_view ? '360° Street View Available' : 'Location Marked'}
-                  </span>
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 ${location.has_street_view ? 'bg-green-500' : 'bg-yellow-500'} rounded-full"></div>
+                    <span class="text-xs ${location.has_street_view ? 'text-green-600' : 'text-yellow-600'}">
+                      ${location.has_street_view ? '360° Available' : 'Location'}
+                    </span>
+                  </div>
+                  ${location.user_id === user?.id ? '<span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded">Your Tour</span>' : ''}
                 </div>
               </div>
             `)
@@ -392,13 +399,20 @@ const Map = () => {
         </MapButton>
       </div>
 
-      {/* Upload Button */}
-      <div className="absolute bottom-20 right-4 z-10">
+      {/* Upload Buttons */}
+      <div className="absolute bottom-20 right-4 z-10 flex flex-col gap-3">
         <MapButton
           variant="primary"
           size="floating"
-          onClick={handleUpload}
+          onClick={() => setShowTourUpload(true)}
           className="animate-float"
+        >
+          <Plus className="w-5 h-5" />
+        </MapButton>
+        <MapButton
+          variant="floating"
+          size="floating"
+          onClick={handleUpload}
         >
           <Upload className="w-5 h-5" />
         </MapButton>
@@ -431,15 +445,15 @@ const Map = () => {
       {showUpload && (
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-20 flex items-center justify-center p-4">
           <div className="bg-card rounded-xl shadow-strong p-6 max-w-md w-full animate-slide-up">
-            <h3 className="text-lg font-semibold text-foreground mb-4">Add 360° Street View</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-4">Quick Location Upload</h3>
             <div className="space-y-4">
               <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-                <Camera className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+                <MapPin className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground mb-2">
-                  Upload 360° camera images
+                  Add a single location marker
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Supported cameras: Ricoh Theta, GoPro Max, Insta360
+                  For full 360° tours, use the + button
                 </p>
               </div>
               <div className="flex gap-3">
@@ -447,12 +461,20 @@ const Map = () => {
                   Cancel
                 </MapButton>
                 <MapButton variant="primary" className="flex-1">
-                  Upload Images
+                  Add Marker
                 </MapButton>
               </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Tour Upload Modal */}
+      {showTourUpload && (
+        <TourUpload
+          onClose={() => setShowTourUpload(false)}
+          onTourCreated={fetchLocations}
+        />
       )}
     </div>
   );
