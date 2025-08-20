@@ -20,6 +20,7 @@ interface Location {
   street_view_image_url: string | null;
   location_type: string;
   is_public: boolean;
+  user_id: string | null;
 }
 
 const Map = () => {
