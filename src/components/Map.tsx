@@ -109,81 +109,7 @@ const Map = () => {
 
     // Wait for map to load before adding sources and layers
     map.current.on('load', () => {
-      if (!map.current) return;
-
-      // Add street view route layer
-      map.current.addSource('street-routes', {
-        type: 'geojson',
-        data: {
-          type: 'FeatureCollection',
-          features: [
-            {
-              type: 'Feature',
-              geometry: {
-                type: 'LineString',
-                coordinates: [
-                  [45.3254, 2.0469], // Bakaara Market
-                  [45.3280, 2.0450], // Central area
-                  [45.3311, 2.0394], // Villa Somalia
-                  [45.3350, 2.0380], // Hospital area
-                  [45.3431, 2.0469], // Airport
-                ]
-              },
-              properties: {
-                'street-view': true
-              }
-            },
-            {
-              type: 'Feature',
-              geometry: {
-                type: 'LineString',
-                coordinates: [
-                  [45.3200, 2.0500], // Liido Beach
-                  [45.3180, 2.0450], // Port area
-                  [45.3150, 2.0480], // Fish Market
-                  [45.3254, 2.0469], // Back to center
-                ]
-              },
-              properties: {
-                'street-view': true
-              }
-            }
-          ]
-        }
-      });
-
-      // Add street view route styling
-      map.current.addLayer({
-        id: 'street-routes-line',
-        type: 'line',
-        source: 'street-routes',
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
-        },
-        paint: {
-          'line-color': '#0ea5e9',
-          'line-width': 4,
-          'line-opacity': 0.8
-        }
-      });
-
-      // Add animated street view route
-      map.current.addLayer({
-        id: 'street-routes-glow',
-        type: 'line',
-        source: 'street-routes',
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round'
-        },
-        paint: {
-          'line-color': '#0ea5e9',
-          'line-width': 8,
-          'line-opacity': 0.3,
-          'line-blur': 2
-        }
-      });
+      // Map is ready for user content
     });
 
     return () => {
@@ -292,25 +218,16 @@ const Map = () => {
     
     if (map.current) {
       if (!isStreetView) {
-        // Enable street view mode - show routes more prominently
-        map.current.setPaintProperty('street-routes-line', 'line-width', 6);
-        map.current.setPaintProperty('street-routes-glow', 'line-width', 12);
-        map.current.setPaintProperty('street-routes-glow', 'line-opacity', 0.5);
-        
-        // Adjust camera for street view
+        // Enable street view mode
         map.current.flyTo({
           pitch: 60,
           zoom: 16,
           duration: 1000
         });
         
-        toast.success("Street view mode enabled - Click blue markers for 360° views");
+        toast.success("Street view mode enabled - Click markers for 360° views");
       } else {
         // Disable street view mode
-        map.current.setPaintProperty('street-routes-line', 'line-width', 4);
-        map.current.setPaintProperty('street-routes-glow', 'line-width', 8);
-        map.current.setPaintProperty('street-routes-glow', 'line-opacity', 0.3);
-        
         map.current.flyTo({
           pitch: 45,
           zoom: 13,

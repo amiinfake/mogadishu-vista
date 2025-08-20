@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Upload, X, MapPin, Camera, Globe } from 'lucide-react';
+import { Upload, X, MapPin, Camera, Globe, Video, Play } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Textarea } from './ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import { Progress } from './ui/progress';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -14,40 +15,37 @@ interface TourUploadProps {
   onTourCreated: () => void;
 }
 
-interface ImageFile {
+interface VideoFile {
   file: File;
   preview: string;
-  gpsCoords?: { lat: number; lng: number };
-  timestamp?: Date;
+  duration?: number;
+  size: string;
 }
 
 const TourUpload: React.FC<TourUploadProps> = ({ onClose, onTourCreated }) => {
   const { user } = useAuth();
   const [tourTitle, setTourTitle] = useState('');
   const [tourDescription, setTourDescription] = useState('');
-  const [images, setImages] = useState<ImageFile[]>([]);
+  const [videos, setVideos] = useState<VideoFile[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Extract GPS data from EXIF
-  const extractGPSFromExif = async (file: File): Promise<{ lat: number; lng: number } | null> => {
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getVideoDuration = (file: File): Promise<number> => {
     return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          // This is a simplified version - in production you'd use a library like exif-js or piexifjs
-          // For now, we'll generate random coordinates around Mogadishu as a demo
-          const coords = {
-            lat: 2.0469 + (Math.random() - 0.5) * 0.02,
-            lng: 45.3254 + (Math.random() - 0.5) * 0.02
-          };
-          resolve(coords);
-        } catch (error) {
-          console.error('Error extracting GPS:', error);
-          resolve(null);
-        }
+      const video = document.createElement('video');
+      video.onloadedmetadata = () => {
+        resolve(video.duration);
       };
-      reader.readAsArrayBuffer(file);
+      video.src = URL.createObjectURL(file);
     });
   };
 
@@ -55,93 +53,104 @@ const TourUpload: React.FC<TourUploadProps> = ({ onClose, onTourCreated }) => {
     const files = Array.from(event.target.files || []);
     
     for (const file of files) {
-      if (!file.type.startsWith('image/')) continue;
+      if (!file.type.startsWith('video/')) {
+        toast.error(`${file.name} is not a video file`);
+        continue;
+      }
 
       const preview = URL.createObjectURL(file);
-      const gpsCoords = await extractGPSFromExif(file);
+      const duration = await getVideoDuration(file);
       
-      const imageFile: ImageFile = {
+      const videoFile: VideoFile = {
         file,
         preview,
-        gpsCoords: gpsCoords || undefined,
-        timestamp: new Date(file.lastModified)
+        duration,
+        size: formatFileSize(file.size)
       };
 
-      setImages(prev => [...prev, imageFile]);
+      setVideos(prev => [...prev, videoFile]);
     }
   };
 
-  const removeImage = (index: number) => {
-    setImages(prev => {
-      const newImages = [...prev];
-      URL.revokeObjectURL(newImages[index].preview);
-      newImages.splice(index, 1);
-      return newImages;
+  const removeVideo = (index: number) => {
+    setVideos(prev => {
+      const newVideos = [...prev];
+      URL.revokeObjectURL(newVideos[index].preview);
+      newVideos.splice(index, 1);
+      return newVideos;
     });
   };
 
   const uploadTour = async () => {
-    if (!user || !tourTitle.trim() || images.length === 0) {
-      toast.error('Please fill in tour title and add at least one image');
+    if (!user || !tourTitle.trim() || videos.length === 0) {
+      toast.error('Please fill in tour title and add at least one 360° video');
       return;
     }
 
     setIsUploading(true);
+    setProcessingProgress(0);
 
     try {
-      // Sort images by timestamp for sequential linking
-      const sortedImages = [...images].sort((a, b) => 
-        (a.timestamp?.getTime() || 0) - (b.timestamp?.getTime() || 0)
-      );
-
-      for (let i = 0; i < sortedImages.length; i++) {
-        const imageFile = sortedImages[i];
-        const { gpsCoords } = imageFile;
+      for (let i = 0; i < videos.length; i++) {
+        const videoFile = videos[i];
         
-        if (!gpsCoords) {
-          toast.error(`Image ${i + 1} has no GPS coordinates`);
-          continue;
-        }
-
-        // Upload image to Supabase Storage
-        const fileName = `${user.id}/${Date.now()}_${i}_${imageFile.file.name}`;
+        // Upload video to Supabase Storage
+        const fileName = `${user.id}/${Date.now()}_${i}_${videoFile.file.name}`;
         const { error: uploadError } = await supabase.storage
           .from('tour-images')
-          .upload(fileName, imageFile.file);
+          .upload(fileName, videoFile.file);
 
         if (uploadError) {
           console.error('Upload error:', uploadError);
-          toast.error(`Failed to upload image ${i + 1}`);
+          toast.error(`Failed to upload video ${i + 1}`);
           continue;
         }
+
+        setProcessingProgress(25 + (i * 25));
 
         // Get public URL
         const { data: { publicUrl } } = supabase.storage
           .from('tour-images')
           .getPublicUrl(fileName);
 
-        // Create location entry
+        // Create processing job entry
         const { error: dbError } = await supabase
           .from('locations')
           .insert({
             user_id: user.id,
-            title: `${tourTitle} - Stop ${i + 1}`,
-            description: tourDescription || `360° panorama ${i + 1} of ${images.length}`,
-            longitude: gpsCoords.lng,
-            latitude: gpsCoords.lat,
-            has_street_view: true,
+            title: `${tourTitle} - Processing`,
+            description: `360° video processing in progress - ${videoFile.size}`,
+            longitude: 45.3254 + (Math.random() - 0.5) * 0.02, // Temporary coords
+            latitude: 2.0469 + (Math.random() - 0.5) * 0.02,
+            has_street_view: false,
             street_view_image_url: publicUrl,
-            location_type: 'tour_stop',
-            is_public: false // Private by default
+            location_type: 'video_processing',
+            is_public: false
           });
 
         if (dbError) {
           console.error('Database error:', dbError);
-          toast.error(`Failed to save location ${i + 1}`);
+          toast.error(`Failed to create processing job ${i + 1}`);
+        }
+
+        // Call processing edge function
+        const { error: processError } = await supabase.functions.invoke('process-360-video', {
+          body: {
+            videoUrl: publicUrl,
+            tourTitle,
+            tourDescription,
+            userId: user.id
+          }
+        });
+
+        if (processError) {
+          console.error('Processing error:', processError);
+          toast.error(`Failed to start processing for video ${i + 1}`);
         }
       }
 
-      toast.success(`Tour "${tourTitle}" uploaded successfully!`);
+      setProcessingProgress(100);
+      toast.success(`Videos uploaded! Processing will extract panoramas and place them on the map automatically.`);
       onTourCreated();
       onClose();
       
@@ -150,6 +159,7 @@ const TourUpload: React.FC<TourUploadProps> = ({ onClose, onTourCreated }) => {
       toast.error('Failed to upload tour');
     } finally {
       setIsUploading(false);
+      setProcessingProgress(0);
     }
   };
 
@@ -193,60 +203,76 @@ const TourUpload: React.FC<TourUploadProps> = ({ onClose, onTourCreated }) => {
             {/* Upload Area */}
             <div className="border-2 border-dashed border-border rounded-lg p-8">
               <div className="text-center">
-                <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Upload 360° Images</h3>
+                <Video className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-medium mb-2">Upload 360° Videos</h3>
                 <p className="text-muted-foreground mb-4">
-                  Select multiple 360° images with GPS metadata
+                  Upload 360° videos - we'll extract frames and GPS data automatically
                 </p>
                 <Button onClick={() => fileInputRef.current?.click()}>
-                  Select Images
+                  Select Videos
                 </Button>
                 <input
                   ref={fileInputRef}
                   type="file"
                   multiple
-                  accept="image/*"
+                  accept="video/*"
                   onChange={handleFileSelect}
                   className="hidden"
                 />
               </div>
             </div>
 
-            {/* Image Preview Grid */}
-            {images.length > 0 && (
+            {/* Video Preview Grid */}
+            {videos.length > 0 && (
               <div className="space-y-4">
-                <h3 className="font-medium">Uploaded Images ({images.length})</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {images.map((image, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={image.preview}
-                        alt={`Preview ${index + 1}`}
-                        className="w-full h-32 object-cover rounded-lg"
-                      />
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="absolute top-2 right-2 w-6 h-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => removeImage(index)}
-                      >
-                        <X className="w-3 h-3" />
-                      </Button>
-                      <div className="absolute bottom-2 left-2">
-                        {image.gpsCoords ? (
+                <h3 className="font-medium">Uploaded Videos ({videos.length})</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {videos.map((video, index) => (
+                    <div key={index} className="relative group border rounded-lg p-4">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <video
+                            src={video.preview}
+                            className="w-20 h-20 object-cover rounded"
+                            muted
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded">
+                            <Play className="w-6 h-6 text-white" />
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium text-sm mb-1">{video.file.name}</p>
+                          <p className="text-xs text-muted-foreground mb-2">
+                            {video.duration ? `${Math.round(video.duration)}s` : 'Unknown duration'} • {video.size}
+                          </p>
                           <Badge variant="secondary" className="text-xs">
-                            <MapPin className="w-3 h-3 mr-1" />
-                            GPS
+                            <Camera className="w-3 h-3 mr-1" />
+                            360° Video
                           </Badge>
-                        ) : (
-                          <Badge variant="destructive" className="text-xs">
-                            No GPS
-                          </Badge>
-                        )}
+                        </div>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="w-8 h-8"
+                          onClick={() => removeVideo(index)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Processing Progress */}
+            {isUploading && processingProgress > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Processing videos...</span>
+                  <span>{processingProgress}%</span>
+                </div>
+                <Progress value={processingProgress} className="w-full" />
               </div>
             )}
 
@@ -257,10 +283,10 @@ const TourUpload: React.FC<TourUploadProps> = ({ onClose, onTourCreated }) => {
               </Button>
               <Button 
                 onClick={uploadTour} 
-                disabled={isUploading || !tourTitle.trim() || images.length === 0}
+                disabled={isUploading || !tourTitle.trim() || videos.length === 0}
                 className="flex-1"
               >
-                {isUploading ? 'Uploading...' : `Upload Tour (${images.length} images)`}
+                {isUploading ? 'Processing...' : `Upload & Process (${videos.length} videos)`}
               </Button>
             </div>
           </CardContent>

@@ -1,1 +1,4 @@
 project_id = "jlaacimqfvknrpywmock"
+
+[functions.process-360-video]
+verify_jwt = true
